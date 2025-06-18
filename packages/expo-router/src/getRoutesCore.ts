@@ -51,6 +51,7 @@ type DirectoryNode = {
 export type RedirectConfig = {
   source: string;
   destination: string;
+  destinationContextKey: string;
   permanent?: boolean;
   methods?: string[];
   external?: boolean;
@@ -59,6 +60,7 @@ export type RedirectConfig = {
 export type RewriteConfig = {
   source: string;
   destination: string;
+  destinationContextKey: string;
   methods?: string[];
 };
 
@@ -155,11 +157,13 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
           ];
         });
 
-        const destination = isExternalRedirect
-          ? targetDestination
-          : validRedirectDestinations.find((key) => key[0] === targetDestination)?.[0];
+        const destinationPair = isExternalRedirect
+          ? undefined
+          : validRedirectDestinations.find((key) => key[0] === targetDestination);
+        const destination = isExternalRedirect ? targetDestination : destinationPair?.[0];
+        const destinationContextKey = isExternalRedirect ? targetDestination : destinationPair?.[1];
 
-        if (!destination) {
+        if (!destinationContextKey || destination === undefined) {
           if (options.preserveRedirectAndRewrites) {
             throw new Error(`Redirect destination "${redirect.destination}" does not exist.`);
           }
@@ -167,9 +171,11 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
           continue;
         }
 
+        contextKeys.push(source);
         redirects[source] = {
           source,
           destination,
+          destinationContextKey,
           permanent: Boolean(redirect.permanent),
           external: isExternalRedirect,
           methods: redirect.methods,
@@ -184,7 +190,7 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
         );
 
         const targetDestination = stripInvisibleSegmentsFromPath(
-          removeFileSystemDots(removeSupportedExtensions(rewrite.destination))
+          removeFileSystemDots(removeSupportedExtensions(rewrite.destination.replace(/^\.?\//, '')))
         );
 
         if (ignoreList.some((regex) => regex.test(source))) {
@@ -199,11 +205,13 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
           ];
         });
 
-        const destination = validRedirectDestinations.find(
+        const destinationPair = validRedirectDestinations.find(
           (key) => key[0] === targetDestination
-        )?.[1];
+        );
+        const destination = destinationPair?.[0];
+        const destinationContextKey = destinationPair?.[1];
 
-        if (!destination) {
+        if (!destinationContextKey || destination === undefined) {
           /*
            * Only throw the error when we are preserving the api routes
            * When doing a static export, API routes will not exist so the redirect destination may not exist.
@@ -211,13 +219,14 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
            * `expo export` swallows this error.
            */
           if (options.preserveApiRoutes) {
-            throw new Error(`Redirect destination "${rewrite.destination}" does not exist.`);
+            throw new Error(`Rewrite destination "${rewrite.destination}" does not exist.`);
           }
 
           continue;
         }
 
-        rewrites[source] = { source, destination, methods: rewrite.methods };
+        contextKeys.push(source);
+        rewrites[source] = { source, destination, destinationContextKey, methods: rewrite.methods };
       }
     }
   }
@@ -295,7 +304,7 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
       }
 
       const redirect = redirects[meta.route];
-      node.destinationContextKey = redirect.destination;
+      node.destinationContextKey = redirect.destinationContextKey;
       node.permanent = redirect.permanent;
       node.generated = true;
       if (node.type === 'route') {
@@ -319,17 +328,15 @@ function getDirectoryTree(contextModule: RequireContext, options: Options) {
       }
 
       const rewrite = rewrites[meta.route];
-      node.destinationContextKey = rewrite.destination;
+      node.destinationContextKey = rewrite.destinationContextKey;
       node.generated = true;
       if (node.type === 'route') {
-        node = {
-          ...node,
-          ...options.getSystemRoute({
-            type: 'rewrite',
-            route: node.destinationContextKey,
-            rewriteConfig: rewrite,
-          }),
-        };
+        node = options.getSystemRoute({
+          type: 'rewrite',
+          route: rewrite.destination,
+          defaults: node,
+          rewriteConfig: rewrite,
+        });
       }
       if (rewrite.methods) {
         node.methods = rewrite.methods;
@@ -550,7 +557,7 @@ function getFileMeta(
   originalKey: string,
   options: Options,
   redirects: Record<string, RedirectConfig>,
-  rewrites: Record<string, RedirectConfig>
+  rewrites: Record<string, RewriteConfig>
 ) {
   // Remove the leading `./`
   const key = removeSupportedExtensions(removeFileSystemDots(originalKey));

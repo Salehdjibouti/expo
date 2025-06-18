@@ -25,6 +25,7 @@ export type Options = {
 export type RedirectConfig = {
     source: string;
     destination: string;
+    destinationContextKey: string;
     permanent?: boolean;
     methods?: string[];
     external?: boolean;
@@ -32,6 +33,7 @@ export type RedirectConfig = {
 export type RewriteConfig = {
     source: string;
     destination: string;
+    destinationContextKey: string;
     methods?: string[];
 };
 /**
