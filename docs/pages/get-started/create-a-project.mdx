@@ -1,24 +1,19 @@
----
-title: Create a project
-description: Learn how to create a new Expo project.
-hideTOC: true
----
+Build me a complete Flutter app for a school system used by 150,000 parents. The app should allow only parents to log in using their phone number and a login code provided by the admin.
 
-import { Terminal } from '~/ui/components/Snippet';
+Basic Requirements:
+1. Login screen with phone number and login code fields.
+2. Firebase as the backend (Firestore for user data).
+3. After login, the parent should see:
+   - Student Info (name, grade, ID)
+   - Attendance history
+   - Homework list
+   - Announcements from the school
+4. App should check Firebase if phone number + code match.
+5. Admin gives out the code manually through web panel (not in this app).
+6. Simple navigation bar for Home, Homework, Attendance, and Messages.
 
-System requirements:
-
-- [Node.js (LTS)](https://nodejs.org/en/).
-- macOS, Windows (Powershell and [WSL 2](https://expo.fyi/wsl)), and Linux are supported.
-
-We recommend starting with the default project created by `create-expo-app`. The default project includes example code to help you get started.
-
-To create a new project, run the following command:
-
-<Terminal cmd={['$ npx create-expo-app@latest']} />
-
-> You can choose a different template by adding the [`--template` option](/more/create-expo/#--template).
-
-## Next step
-
-You have a project. Now it's time to set up your development environment so that you can start developing.
+Please include:
+- Flutter main.dart
+- All necessary Firebase setup files
+- Folder structure
+- Sample Firestore rules (read-only access for logged-in parents)
